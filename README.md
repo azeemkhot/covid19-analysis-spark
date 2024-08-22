@@ -1,7 +1,7 @@
-# covid19-analysis-spark
+# Covid19 Analysis using Spark
 
-PROBLEM STATEMENT
-Recent Covid-19 The pandemic has raised alarms over one of the most overlooked areas to
+## PROBLEM STATEMENT
+Recent Covid-19 pandemic has raised alarms over one of the most overlooked areas to
 focus on: healthcare management. While healthcare management has various use cases for
 using data, patient cases are one critical parameter to observe and predict if one wants to
 improve the efficiency of healthcare management in a hospital.
@@ -11,23 +11,47 @@ satisfied.
 
 
 
-DATA INGESTION
+## DATA INGESTION
 The process of obtaining and importing data for immediate use or storage in a database is
 known as data ingestion. To take something in or absorb something is to ingest it. There are
 three ways to carry out data ingestion, including real time, batches, or a combination of both in
 a setup known as lambda architecture. Depending on their company objectives, IT environment,
 and financial constraints, companies might choose one of these varieties.
-We used the COVID-19 dataset for the months of April, May, and June 2022. We made three
-folders named apr22, may22, and jun22 to save the day-wise csv files of the dataset. The
+The COVID-19 dataset used here is for the months of April, May, and June 2022. Three
+folders named apr22, may22, and jun22 were used to save the day-wise csv files of the dataset. The
 segregation is as follows:
-Dates (MM-DD-YYYY) Name Rows Columns
-04-01-2022 to 04-30-2022 apr22 120360 14
-05-01-2022 to 05-30-2022 may22 124372 14
-06-01-2022 to 06-30-2022 jun22 120360 14
+
+<table>
+  <tr>
+    <th>Dates(MM-DD-YYYY)</th>
+    <th>Name</th>
+    <th>Rows</th>
+    <th>Columns</th>
+  </tr>
+  <tr>
+    <td>04-01-2022 to 04-30-2022</td>
+    <td>apr22</td>
+    <td>120360</td>
+    <td>14</td>
+  </tr>
+  <tr>
+    <td>05-01-2022 to 05-30-2022</td>
+    <td>may22</td>
+    <td>124372</td>
+    <td>14</td>
+  </tr>
+  <tr>
+    <td>06-01-2022 to 06-30-2022</td>
+    <td>jun22</td>
+    <td>120360</td>
+    <td>14</td>
+  </tr>
+</table>
 
 
+### Loading Data into Spark
 
-LOADING DATA IN SPARK
+A spark dataframe needs to be given the schema of the dataset while reading a dataframe. To provide schema to the dataframe, the inferSchema option could be used while reading or schema can be manually defined and passed to the dataframe while reading the data like below.
 
 from pyspark.sql.types import StructType,StructField, StringType,IntegerType, TimestampType,
 DoubleType
@@ -55,16 +79,10 @@ aprdf.count()
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image9.png)
 
 
-
-
-
-
-
-LOADING DATA INTO MYSQL
+### Loading Data into MySQL
 sudo mysql --local-infile=1 -u root -p
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image19.png)
-
 
 
 create table jun22(fips int,admin2 varchar(100),province_state varchar(100),country_region
@@ -78,7 +96,7 @@ int,case_fatality_ratio decimal(14,6));
 
 
 
-Shell script to load data:
+#### Shell script to load data:
 #!/usr/bin/env bash
 for f in *.csv
 do
@@ -113,7 +131,7 @@ done
 
 
 
-LOADING DATA INTO HIVE
+### Loading Data into Hive
 hadoop fs -mkdir covid19
 hadoop fs -put covid19/may22 covid19
 
@@ -164,25 +182,25 @@ ver", "com.mysql.jdbc.Driver").option("dbtable", "jun22").option("user",
 
 
 
-DATA CLEANSING
+## DATA CLEANSING
 Data cleansing or data cleaning is the process of detecting and correcting corrupt or inaccurate
 records from a record set, table, or database and refers to identifying incomplete, incorrect,
 inaccurate or irrelevant parts of the data and then replacing, modifying, or deleting the dirty or
 coarse data.
-Reading separate data frames
+### Reading separate data frames
 aprdf = spark.read.schema(dfschema).csv("file:///home/ak/covid19/apr22", header=True)
 maydf = spark.sql("select * from covid19.may22 where country_region!='Country_Region'")
 jundf = spark.read.format("jdbc").option("url",
 "jdbc:mysql://localhost:3306/covid19?useSSL=false&allowPublicKeyRetrieval=true").option("dri
 ver", "com.mysql.jdbc.Driver").option("dbtable", "jun22").option("user",
 "ak").option("password", "ak").load()
-Union of all dataframes
+### Union of all dataframes
 covid_df = aprdf.dropDuplicates().union(maydf.dropDuplicates()).union(jundf.dropDuplicates())
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image21.png)
 
 
 
-
+### Dropping rows with all null columns
 covid_df = covid_df.na.drop("all")
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image25.png)
@@ -193,6 +211,7 @@ covid_df = covid_df.na.drop("all")
 
 
 
+### Replacing null strings with null
 
 covid_df = covid_df.na.replace('null', None) 
 covid_df = covid_df.na.replace('Null', None) 
@@ -201,11 +220,14 @@ covid_df = covid_df.na.replace('NULL', None)
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image3.png)
 
 
+### Dropping duplicate rows
+
 covid_df = covid_df.dropDuplicates() 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image18.png)
 
 
 
+### Saving cleaned union file as csv:
 
 covid_df.write.csv("/home/ak/covid19/covid_union", mode = “overwrite”) 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image20.png)
@@ -218,12 +240,16 @@ covid_df.write.csv("/home/ak/covid19/covid_union", mode = “overwrite”)
 
 
 
+## TRANSFORMATIONS
 
+### Renaming column
 coviddf=coviddf.withColumnRenamed('admin2','admin') 
 coviddf.printSchema()
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image27.png)
 
+
+### Splitting column “last_update” into two new columns
 coviddf=coviddf.withColumn('date',split(col('last_update'),' ').getItem(0)).withColumn('time',split(col('last_update'),' ').getItem(1))
 
 covid_df.show(5)
@@ -231,6 +257,8 @@ covid_df.show(5)
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image26.png)
 
 
+
+### Changing datatype of column “last_update” to timestamp
 
 From pyspark.sql.functions import to_timestamp
 
@@ -241,40 +269,45 @@ coviddf.printSchema()
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image22.png)
 
 
-parquet
+### Saving dataframe as parquet
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image12.png)
 
 
+## GROUP BY, FILTER & AGGREGATIONS
 
-
+### Filtering data for deaths more than 1000
 covid_df.filter(‘deaths>1000’).show(5) 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image1.png)
 
-
+### Applying groupBy for average confirmed cases country wise
 covid_df.groupBy(‘country_region’).avg(‘confirmed’).show(5) 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image6.png)
 
 
 
-Top 10 countries with highest deaths covid_df.groupBy(‘country_region’).sum(‘deaths’).orderBy(‘sum(deaths)’, ascending = False).show(5) 
+### Top 10 countries with highest deaths 
+covid_df.groupBy(‘country_region’).sum(‘deaths’).orderBy(‘sum(deaths)’, ascending = False).show(5) 
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image13.png)
 
 
 
-Top 10 countries with highest deaths covid_df.groupBy(‘country_region’).sum(‘deaths’).orderBy(‘sum(deaths)’, ascending = True).show(5) 
+### Top 10 countries with highest deaths 
+covid_df.groupBy(‘country_region’).sum(‘deaths’).orderBy(‘sum(deaths)’, ascending = True).show(5) 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image11.png)
 
 
 
 
-Top 10 countries with highest confirmed cases covid_df.groupBy("country_region").sum("confirmed").orderBy("sum(confirmed)", ascending = False).show(5)
+### Top 10 countries with highest confirmed cases 
+covid_df.groupBy("country_region").sum("confirmed").orderBy("sum(confirmed)", ascending = False).show(5)
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image14.png)
 
 
 
 
-Top 10 countries with highest confirmed cases covid_df.groupBy("country_region").sum("confirmed").orderBy("sum(confirmed)", ascending = True).show(5)
+### Top 10 countries with highest confirmed cases 
+covid_df.groupBy("country_region").sum("confirmed").orderBy("sum(confirmed)", ascending = True).show(5)
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image24.png)
 
@@ -283,28 +316,14 @@ Top 10 countries with highest confirmed cases covid_df.groupBy("country_region")
 
 
 
-Filtering data for a country covid_df.filter("country_region='India'").select('country_region','province_state','confirmed','deaths','recovered','active').show(10) 
+### Filtering data for a country 
+covid_df.filter("country_region='India'").select('country_region','province_state','confirmed','deaths','recovered','active').show(10) 
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image23.png)
 
 
 
-Sorting dataframe according to country and state covid_df=covid_df.sort('country_region','province_state') 
+### Sorting dataframe according to country and state 
+covid_df=covid_df.sort('country_region','province_state') 
 covid_df.show(10) 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image7.png)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
