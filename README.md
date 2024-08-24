@@ -43,6 +43,7 @@ These data sources will be loaded into spark from the local file system as well 
 
 A spark dataframe needs to be given the schema of the dataset while reading a dataframe. To provide schema to the dataframe, the inferSchema option could be used while reading or schema can be manually defined and passed to the dataframe while reading the data like below.
 \
+\
 from pyspark.sql.types import StructType,StructField, StringType,IntegerType, TimestampType,DoubleType
 \
 \
@@ -64,7 +65,6 @@ StructField("incident_rate", DoubleType(), True), \
 StructField("case_fatality_ratio", DoubleType(), True) \
 ] \
 ) \
-\
 \
 aprdf = spark.read.schema(dfschema).csv("file:///home/ak/covid19/apr22", header=True) \
 aprdf.count()
@@ -153,7 +153,7 @@ maydf = spark.sql("select * from covid19.may22 where country_region!='Country_Re
 jundf = spark.read.format("jdbc").option("url","jdbc:mysql://localhost:3306/covid19?useSSL=false&allowPublicKeyRetrieval=true").option("driver", "com.mysql.jdbc.Driver").option("dbtable", "jun22").option("user","ak").option("password", "ak").load() 
 
 ### Union of all dataframes
-covid_df = aprdf.dropDuplicates().union(maydf.dropDuplicates()).union(jundf.dropDuplicates())
+covid_df = aprdf.union(maydf).union(jundf)
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image21.png)
 
@@ -191,14 +191,15 @@ Data transformation involves converting data from one format or structure into a
 Transformations in Spark are operations on DataFrames that produce a new Dataframe from an existing one. They are generally lazy, meaning they are not executed until an action is called. The execution plan is recorded, and Spark optimizes the plan before executing it.
 
 ### Renaming column
-coviddf=coviddf.withColumnRenamed('admin2','admin') \
-coviddf.printSchema()
+covid_df=covid_df.withColumnRenamed('admin2','admin') \
+covid_df.printSchema()
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image27.png)
 
 
 ### Splitting column “last_update” into two new columns
-coviddf=coviddf.withColumn('date',split(col('last_update'),' ').getItem(0)).withColumn('time',split(col('last_update'),' ').getItem(1)) \
+from pyspark.sql.functions import split, col \
+covid_df=covid_df.withColumn('date',split(col('last_update'),' ').getItem(0)).withColumn('time',split(col('last_update'),' ').getItem(1)) \
 covid_df.show(5)
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image26.png)
@@ -206,15 +207,19 @@ covid_df.show(5)
 
 ### Changing datatype of column “last_update” to timestamp
 
-From pyspark.sql.functions import to_timestamp \
-coviddf=coviddf.withColumn('last_update',to_timestamp(col('last_update'))) \
-coviddf.printSchema() 
+from pyspark.sql.functions import to_timestamp \
+covid_df=covid_df.withColumn('last_update',to_timestamp(col('last_update'))) \
+covid_df.printSchema() 
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image22.png)
 
 
 ### Saving dataframe as parquet
-Parquet is a columnar format that is supported by many other data processing systems. Spark SQL provides support for both reading and writing Parquet files that automatically preserves the schema of the original data. 
+Parquet is a columnar format that is supported by many other data processing systems. Spark SQL provides support for both reading and writing Parquet files that automatically preserves the schema of the original data. \
+\
+covid_df.write.parquet("/home/ak/covid19/covid_union_parquet") \
+pdf = spark.read.parquet("/home/ak/covid19/covid_union_parquet", header = True) \
+pdf.printSchema()
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image12.png)
 
 
@@ -239,7 +244,7 @@ covid_df.groupBy(‘country_region’).sum(‘deaths’).orderBy(‘sum(deaths)�
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image13.png)
 
 
-### Top 10 countries with highest deaths 
+### Top 10 countries with lowest deaths 
 covid_df.groupBy(‘country_region’).sum(‘deaths’).orderBy(‘sum(deaths)’, ascending = True).show(5) 
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image11.png)
@@ -251,7 +256,7 @@ covid_df.groupBy("country_region").sum("confirmed").orderBy("sum(confirmed)", as
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image14.png)
 
 
-### Top 10 countries with highest confirmed cases 
+### Top 10 countries with lowest confirmed cases 
 covid_df.groupBy("country_region").sum("confirmed").orderBy("sum(confirmed)", ascending = True).show(5)
 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image24.png)
