@@ -12,14 +12,11 @@ satisfied.
 
 
 ## DATA INGESTION
-The process of obtaining and importing data for immediate use or storage in a database is
-known as data ingestion. To take something in or absorb something is to ingest it. There are
-three ways to carry out data ingestion, including real time, batches, or a combination of both in
-a setup known as lambda architecture. Depending on their company objectives, IT environment,
-and financial constraints, companies might choose one of these varieties.
-The COVID-19 dataset used here is for the months of April, May, and June 2022. Three
-folders named apr22, may22, and jun22 were used to save the day-wise csv files of the dataset. The
-segregation is as follows:
+The process of obtaining and importing data for immediate use or storage in a database is known as data ingestion. To take something in or absorb something is to ingest it. 
+\
+The COVID-19 dataset used here is for the months of April, May, and June 2022. 
+Three folders named apr22, may22, and jun22 were used to save the day-wise csv files of the dataset. 
+The segregation is as follows:
 
 <table>
   <tr>
@@ -48,8 +45,11 @@ segregation is as follows:
   </tr>
 </table>
 
+\
 
-### Loading Data into Spark
+These data sources will be loaded into spark from the local file system as well as MySQL and Hive tables.
+
+### Loading Data into Spark from Local File
 
 A spark dataframe needs to be given the schema of the dataset while reading a dataframe. To provide schema to the dataframe, the inferSchema option could be used while reading or schema can be manually defined and passed to the dataframe while reading the data like below.
 
@@ -93,9 +93,6 @@ int,case_fatality_ratio decimal(14,6));
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image17.png)
 
 
-
-
-
 #### Shell script to load data:
 #!/usr/bin/env bash
 for f in *.csv
@@ -125,12 +122,6 @@ done
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image2.png)
 
 
-
-
-
-
-
-
 ### Loading Data into Hive
 hadoop fs -mkdir covid19
 hadoop fs -put covid19/may22 covid19
@@ -156,18 +147,9 @@ stored as textfile location '/user/ak/covid19/may22' TBLPROPERTIES
 
 
 
-
-
-
 Converting Hive table to dataframe in Spark:
 maydf = spark.sql("select * from covid19.may22 where country_region!='Country_Region'")
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image16.png)
-
-
-
-
-
-
 
 
 
@@ -183,10 +165,8 @@ ver", "com.mysql.jdbc.Driver").option("dbtable", "jun22").option("user",
 
 
 ## DATA CLEANSING
-Data cleansing or data cleaning is the process of detecting and correcting corrupt or inaccurate
-records from a record set, table, or database and refers to identifying incomplete, incorrect,
-inaccurate or irrelevant parts of the data and then replacing, modifying, or deleting the dirty or
-coarse data.
+Data cleansing or data cleaning is the process of detecting and correcting corrupt or inaccurate records from a record set, table, or database and refers to identifying incomplete, incorrect, inaccurate or irrelevant parts of the data and then replacing, modifying, or deleting the dirty or coarse data.
+
 ### Reading separate data frames
 aprdf = spark.read.schema(dfschema).csv("file:///home/ak/covid19/apr22", header=True)
 maydf = spark.sql("select * from covid19.may22 where country_region!='Country_Region'")
@@ -194,6 +174,7 @@ jundf = spark.read.format("jdbc").option("url",
 "jdbc:mysql://localhost:3306/covid19?useSSL=false&allowPublicKeyRetrieval=true").option("dri
 ver", "com.mysql.jdbc.Driver").option("dbtable", "jun22").option("user",
 "ak").option("password", "ak").load()
+
 ### Union of all dataframes
 covid_df = aprdf.dropDuplicates().union(maydf.dropDuplicates()).union(jundf.dropDuplicates())
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image21.png)
@@ -236,11 +217,9 @@ covid_df.write.csv("/home/ak/covid19/covid_union", mode = “overwrite”)
 
 
 
-
-
-
-
 ## TRANSFORMATIONS
+Data transformation involves converting data from one format or structure into another. This process is crucial for preparing your data for analytics or machine learning models. 
+Transformations in Spark are operations on DataFrames that produce a new Dataframe from an existing one. They are generally lazy, meaning they are not executed until an action is called. The execution plan is recorded, and Spark optimizes the plan before executing it.
 
 ### Renaming column
 coviddf=coviddf.withColumnRenamed('admin2','admin') 
@@ -270,11 +249,12 @@ coviddf.printSchema()
 
 
 ### Saving dataframe as parquet
+Parquet is a columnar format that is supported by many other data processing systems. Spark SQL provides support for both reading and writing Parquet files that automatically preserves the schema of the original data. 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image12.png)
 
 
 ## GROUP BY, FILTER & AGGREGATIONS
-
+PySpark’s groupBy,filter and aggregate operations are used to perform data aggregation and summarization on a DataFrame. They allow you to group or filter data based on one or more columns and then apply various aggregate functions to compute statistics or transformations on the grouped data.
 ### Filtering data for deaths more than 1000
 covid_df.filter(‘deaths>1000’).show(5) 
 ![alt text](https://github.com/azeemkhot/covid19-analysis-spark/blob/main/images/image1.png)
